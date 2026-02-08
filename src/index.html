@@ -4,23 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Squared (^2) Language</title>
-    <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
             --bg-dark: #1e1e1e;
             --bg-darker: #121212;
-            --accent: #FFB74D; /* Peachish Yellow Orange */
+            --accent: #FFB74D; 
             --text: #e0e0e0;
             --border: #333;
-            --code-bg: #252526;
-            --console-bg: #1e1e1e;
+            --code-bg: #1e1e1e;
+            --console-bg: #0a0a0a;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
             background-color: var(--bg-darker);
             color: var(--text);
             height: 100vh;
@@ -64,14 +63,13 @@
             gap: 6px;
         }
 
-        button:hover { background-color: #444; border-color: #555; }
-
         button#run-btn {
-            background-color: var(--accent);
-            color: #000;
-            border: none;
+            background-color: #FFB74D;
+            color: #fff;
+            border: 1px solid rgba(240,246,252,0.1);
             font-weight: bold;
         }
+        button#run-btn:hover { background-color: #ffbf64; }
         button#run-btn:hover { filter: brightness(1.1); }
 
         main { flex: 1; display: flex; overflow: hidden; }
@@ -96,58 +94,66 @@
             border-bottom: 1px solid var(--border);
         }
 
-        .textarea-wrapper { flex: 1; position: relative; background-color: var(--code-bg); overflow: hidden; }
+        .textarea-wrapper { 
+            flex: 1; 
+            position: relative; 
+            background-color: var(--code-bg); 
+            overflow: hidden; 
+        }
 
         .editor-container {
-            position: absolute;
-            top: 0;
-            left: 0;
+            display: grid;
             width: 100%;
             height: 100%;
         }
 
         textarea, pre {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            grid-area: 1 / 1 / 2 / 2;
             margin: 0;
-            padding: 1rem;
+            padding: 16px;
             border: none;
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
             font-size: 14px;
-            line-height: 1.5;
+            line-height: 20px;
             white-space: pre-wrap;
             word-wrap: break-word;
             box-sizing: border-box;
             background: transparent;
-            overflow: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            tab-size: 4;
+            -webkit-font-smoothing: subpixel-antialiased;
         }
 
         textarea {
             color: transparent;
-            caret-color: #e0e0e0;
+            caret-color: #58a6ff;
             z-index: 1;
             resize: none;
             outline: none;
+            -webkit-text-fill-color: transparent;
         }
 
         pre {
             z-index: 0;
             pointer-events: none;
-            color: #d4d4d4;
+            color: #c9d1d9;
         }
         
-        code { font-family: inherit; }
+        code { 
+            font-family: inherit; 
+            font-size: inherit;
+            line-height: inherit;
+        }
 
-        /* Syntax Highlighting Colors */
-        .token-comment { color: #6a9955; }
-        .token-keyword { color: #569cd6; font-weight: bold; }
-        .token-type { color: #dcdcaa; }
-        .token-number { color: #b5cea8; }
-        .token-punctuation { color: #d4d4d4; }
-        .token-string { color: #ce9178; }
+        /* Lua/Luau Inspired Vibrant Palette */
+        .token-comment { color: #6A9955; font-style: italic; }
+        .token-keyword { color: #FFB74D; font-weight: bold; } 
+        .token-type { color: #4FC3F7; }
+        .token-builtin { color: #9CDCFE; }
+        .token-number { color: #CE9178; }
+        .token-punctuation { color: #D4D4D4; opacity: 0.9; }
+        .token-string { color: #CE9178; }
 
         #console-output {
             flex: 1;
