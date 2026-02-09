@@ -246,11 +246,21 @@ export class Compiler {
         }
 
         if (calleeName === 'random') {
+            if (node.arguments.length === 1) {
+                const arr = this.evaluate(node.arguments[0], scope);
+                const target = (arr && arr.type === 'primitive') ? arr.value : arr;
+                if (Array.isArray(target)) {
+                    return target[Math.floor(Math.random() * target.length)];
+                }
+                return target;
+            }
             const min = this.evaluate(node.arguments[0], scope);
             const max = this.evaluate(node.arguments[1], scope);
-            const vMin = (min.value !== undefined) ? min.value : min;
-            const vMax = (max.value !== undefined) ? max.value : max;
-            return Math.floor(Math.random() * (vMax - vMin + 1)) + vMin;
+            const vMin = (min && min.value !== undefined) ? min.value : min;
+            const vMax = (max && max.value !== undefined) ? max.value : max;
+            const nMin = Number(vMin) || 0;
+            const nMax = Number(vMax) || 0;
+            return Math.floor(Math.random() * (nMax - nMin + 1)) + nMin;
         }
 
         if (calleeName === 'eval') {
