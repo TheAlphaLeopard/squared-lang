@@ -1,52 +1,28 @@
-# Squared (^2) Example
+# sqrd Playground - Fast & Lean
 
-# 1. Variables and Primitives
-var[a] = int[10]
-var[b] = int[20]
-print(fstr[Sum: {eval(var[a] + var[b]).result}])
-
-# 2. Random Numbers
-var[rnd] = fint[{random(int[1], int[100])}]
-print(fstr[Random Number: {rnd}])
-
-# 3. Objects
-func[createPerson()]
-    var[p] = obj[prop[name]=str[Alice], prop[age]=int[25]]
-    return p
-
-var[person] = createPerson()
-print(fstr[Person: {person.name}, Age: {person.age}])
-
-# 4. Arrays
-var[list] = a[str[Apple], str[Banana], str[Cherry]]
-print(fstr[First fruit: {var[list].val.0}])
-print(fstr[All fruits: {var[list]}])
-
-# 5. Dynamic Object
-var[dyn] = fobj[obj[prop[val]=fint[{random(int[1], int[50])}]]]
-print(fstr[Dynamic Value: {dyn.val}])
-
-# 6. Control Flow
-print(str[--- Loops & Ifs ---])
-
-# If Statement
+# Basic variable and math
 var[x] = int[10]
-if[var[x] > int[5]]
-    print(str[x is greater than 5])
+var[y] = int[20]
+var[sum] = var[x] + var[y]
+
+print(fstr[The sum of {var[x]} and {var[y]} is {var[sum]}])
+
+# Simple function
+func[greet(var[name])]
+    return fstr[Hello, {var[name]}! Welcome to Squared.]
+
+print(greet(str[User]))
+
+# Array and Object-like structures
+var[colors] = a[str[Red], str[Green], str[Blue]]
+print(fstr[First color: {var[colors].0}])
+
+# Logic
+if[var[sum] > int[15]]
+    print(str[The sum is greater than 15])
 else
-    print(str[x is small])
+    print(str[The sum is small])
 
-# While Loop
-var[count] = int[3]
-while[var[count] > int[0]]
-    print(fstr[Countdown: {var[count]}])
-    var[count] = var[count] - int[1]
-
-# For Loop with Break/Continue
-print(str[For Loop (skip 2, break at 4):])
-for[var[i]=int[0], var[i] < int[10], var[i] = var[i] + int[1]]
-    if[var[i] == int[2]]
-        continue
-    if[var[i] == int[4]]
-        break
-    print(fstr[Index: {var[i]}])
+# f[...] type for direct code evaluation
+var[calc] = f[int[5] * int[5]]
+print(fstr[Result of f-type code: {var[calc]}])

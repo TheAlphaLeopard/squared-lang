@@ -4,8 +4,8 @@ export class Lexer {
         this.pos = 0;
         this.tokens = [];
         this.currentIndent = 0;
-        // Pre-compile the regex for speed
-        this.tokenRegex = /#.*|\n|[ \t]+|[a-zA-Z_][a-zA-Z0-9_]*|[0-9]+(?:\.[0-9]+)?|==|!=|<=|>=|[=,.\+\-\*\/\(\)\{\}\<\>\!\[\]]/g;
+        // Updated regex to handle filenames better in imports
+        this.tokenRegex = /#.*|\n|[ \t]+|[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z0-9_]+)?|[0-9]+(?:\.[0-9]+)?|==|!=|<=|>=|[=,.\+\-\*\/\(\)\{\}\<\>\!\[\]]/g;
     }
 
     tokenize() {
@@ -13,24 +13,29 @@ export class Lexer {
         this.handleIndentation();
         while ((match = this.tokenRegex.exec(this.input)) !== null) {
             const val = match[0];
+            const raw = val;
             
             if (val === '\n') {
-                this.tokens.push({ type: 'NEWLINE' });
+                this.tokens.push({ type: 'NEWLINE', value: '\n', raw });
                 this.handleIndentation();
                 continue;
             }
-            if (val.startsWith('#') || /^[ \t]+$/.test(val)) continue;
+            if (val.startsWith('#')) continue;
+            if (/^[ \t]+$/.test(val)) {
+                this.tokens.push({ type: 'WHITESPACE', value: val, raw });
+                continue; 
+            }
 
             if (/[a-zA-Z_]/.test(val[0])) {
-                this.tokens.push({ type: 'IDENTIFIER', value: val });
+                this.tokens.push({ type: 'IDENTIFIER', value: val, raw });
             } else if (/[0-9]/.test(val[0])) {
-                this.tokens.push({ type: 'NUMBER', value: val });
+                this.tokens.push({ type: 'NUMBER', value: val, raw });
             } else if (val === '[') {
-                this.tokens.push({ type: 'LBRACKET', value: '[' });
+                this.tokens.push({ type: 'LBRACKET', value: '[', raw });
             } else if (val === ']') {
-                this.tokens.push({ type: 'RBRACKET', value: ']' });
+                this.tokens.push({ type: 'RBRACKET', value: ']', raw });
             } else {
-                this.tokens.push({ type: 'SYMBOL', value: val });
+                this.tokens.push({ type: 'SYMBOL', value: val, raw });
             }
         }
 
@@ -43,8 +48,7 @@ export class Lexer {
 
     handleIndentation() {
         let spaces = 0;
-        const start = this.tokenRegex.lastIndex;
-        let p = start;
+        let p = this.tokenRegex.lastIndex;
         while (p < this.input.length) {
             const c = this.input[p];
             if (c === ' ') spaces++;
@@ -83,9 +87,8 @@ export class Parser {
     parse() {
         const statements = [];
         while (this.pos < this.tokens.length) {
-            if (this.match('NEWLINE')) continue;
+            if (this.match('NEWLINE') || this.match('WHITESPACE')) continue;
             if (this.match('DEDENT')) continue;
-
             const stmt = this.parseStatement();
             if (stmt) statements.push(stmt);
             else break;
@@ -94,6 +97,7 @@ export class Parser {
     }
 
     parseStatement() {
+        if (this.check('IDENTIFIER', 'import')) return this.parseImportStatement();
         if (this.check('IDENTIFIER', 'var')) return this.parseVarDeclaration();
         if (this.check('IDENTIFIER', 'func')) return this.parseFunctionDeclaration();
         if (this.check('IDENTIFIER', 'return')) return this.parseReturnStatement();
@@ -110,6 +114,14 @@ export class Parser {
         const expr = this.parseExpression();
         this.match('NEWLINE'); 
         return { type: 'ExpressionStatement', expression: expr };
+    }
+
+    parseImportStatement() {
+        this.consume('IDENTIFIER', 'import');
+        // Handle names like "random.js"
+        const moduleName = this.consume('IDENTIFIER').value;
+        this.match('NEWLINE');
+        return { type: 'ImportStatement', moduleName };
     }
 
     parseVarDeclaration(consumeNewline = true) {
@@ -160,21 +172,17 @@ export class Parser {
     parseForStatement() {
         this.consume('IDENTIFIER', 'for');
         this.consume('LBRACKET');
-        
         let init = null;
         if (this.check('IDENTIFIER', 'var')) init = this.parseVarDeclaration(false);
         else if (this.check('IDENTIFIER') && this.tokens[this.pos+1]?.value === '=') init = this.parseAssignmentStatement(false);
         else init = { type: 'ExpressionStatement', expression: this.parseExpression() };
-
         this.consume('SYMBOL', ',');
         const test = this.parseExpression();
         this.consume('SYMBOL', ',');
-        
         let update = null;
         if (this.check('IDENTIFIER', 'var')) update = this.parseVarDeclaration(false);
         else if (this.check('IDENTIFIER') && this.tokens[this.pos+1]?.value === '=') update = this.parseAssignmentStatement(false);
         else update = { type: 'ExpressionStatement', expression: this.parseExpression() };
-
         this.consume('RBRACKET');
         this.consume('NEWLINE');
         const body = this.parseBlock();
@@ -186,7 +194,8 @@ export class Parser {
         const body = [];
         while (!this.check('DEDENT') && this.pos < this.tokens.length) {
             if (this.match('NEWLINE')) continue;
-            body.push(this.parseStatement());
+            const stmt = this.parseStatement();
+            if (stmt) body.push(stmt);
         }
         this.consume('DEDENT');
         return body;
@@ -200,21 +209,23 @@ export class Parser {
         const params = [];
         if (!this.check('SYMBOL', ')')) {
             do {
+                this.consume('IDENTIFIER', 'var');
+                this.consume('LBRACKET');
                 params.push(this.consume('IDENTIFIER').value);
+                this.consume('RBRACKET');
             } while (this.match('SYMBOL', ','));
         }
         this.consume('SYMBOL', ')');
         this.consume('RBRACKET');
-        
+        // Reverted: No '=' here
         this.consume('NEWLINE');
         const body = this.parseBlock();
-        
         return { type: 'FunctionDeclaration', name, params, body };
     }
 
     parseReturnStatement() {
         this.consume('IDENTIFIER', 'return');
-        const value = this.parseExpression();
+        const value = this.check('NEWLINE') ? null : this.parseExpression();
         this.match('NEWLINE');
         return { type: 'ReturnStatement', value };
     }
@@ -260,30 +271,28 @@ export class Parser {
 
     parseCallMemberPrimary() {
         let expr = this.parsePrimary();
-
         while (true) {
             if (this.match('SYMBOL', '.')) {
                 let prop;
-                if (this.check('IDENTIFIER')) {
-                    prop = this.consume('IDENTIFIER').value;
-                } else if (this.check('NUMBER')) {
-                    prop = this.consume('NUMBER').value;
+                if (this.match('SYMBOL', '{')) {
+                    prop = this.parseExpression();
+                    this.consume('SYMBOL', '}');
+                    expr = { type: 'MemberExpression', object: expr, property: prop, dynamic: true };
                 } else {
-                    throw new Error('Expected identifier or number after dot');
+                    if (this.check('IDENTIFIER')) prop = this.consume('IDENTIFIER').value;
+                    else if (this.check('NUMBER')) prop = this.consume('NUMBER').value;
+                    else throw new Error('Expected identifier or number after dot');
+                    expr = { type: 'MemberExpression', object: expr, property: prop, dynamic: false };
                 }
-                expr = { type: 'MemberExpression', object: expr, property: prop };
             } else if (this.match('SYMBOL', '(')) {
                 const args = [];
                 if (!this.check('SYMBOL', ')')) {
-                    do {
-                        args.push(this.parseExpression());
-                    } while (this.match('SYMBOL', ','));
+                    do { args.push(this.parseExpression()); } while (this.match('SYMBOL', ','));
                 }
                 this.consume('SYMBOL', ')');
                 expr = { type: 'CallExpression', callee: expr, arguments: args };
             } else if (this.check('LBRACKET')) {
-                const isConstructor = (expr.type === 'Identifier' && ['int', 'str', 'bool', 'fstr', 'fint', 'var', 'o', 'obj', 'a', 'f', 'fobj'].includes(expr.value));
-                
+                const isConstructor = (expr.type === 'Identifier' && ['int', 'str', 'bool', 'fstr', 'fint', 'var', 'obj', 'a', 'fobj', 'f'].includes(expr.value));
                 if (isConstructor) {
                     this.consume('LBRACKET');
                     const contentTokens = [];
@@ -300,12 +309,8 @@ export class Parser {
                     }
                     this.consume('RBRACKET');
                     expr = { type: 'TypeConstruction', callee: expr.value, bodyTokens: contentTokens };
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
+                } else break;
+            } else break;
         }
         return expr;
     }
@@ -322,12 +327,22 @@ export class Parser {
         if (this.check('NUMBER')) {
             return { type: 'Literal', value: Number(this.consume('NUMBER').value) };
         }
-        throw new Error(`Unexpected token: ${JSON.stringify(this.tokens[this.pos])}`);
+        throw new Error(`Unexpected token at position ${this.pos}: ${JSON.stringify(this.tokens[this.pos])}`);
+    }
+
+    skipWhitespace() {
+        while (this.pos < this.tokens.length && this.tokens[this.pos].type === 'WHITESPACE') {
+            this.pos++;
+        }
     }
 
     check(type, value) {
-        if (this.pos >= this.tokens.length) return false;
-        const token = this.tokens[this.pos];
+        let tempPos = this.pos;
+        while (tempPos < this.tokens.length && this.tokens[tempPos].type === 'WHITESPACE') {
+            tempPos++;
+        }
+        if (tempPos >= this.tokens.length) return false;
+        const token = this.tokens[tempPos];
         if (token.type !== type) return false;
         if (value && token.value !== value) return false;
         return true;
@@ -335,6 +350,7 @@ export class Parser {
 
     match(type, value) {
         if (this.check(type, value)) {
+            this.skipWhitespace();
             this.pos++;
             return true;
         }
@@ -342,6 +358,7 @@ export class Parser {
     }
 
     consume(type, value) {
+        this.skipWhitespace();
         if (this.check(type, value)) return this.tokens[this.pos++];
         throw new Error(`Expected ${type} ${value || ''} but found ${JSON.stringify(this.tokens[this.pos])}`);
     }
