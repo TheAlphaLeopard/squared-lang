@@ -1,4 +1,4 @@
 
 ![the squared lang logo](imgs/title.png "^2")
-a vibe coded coding kanguage made in js that is similar to python, just everything is a value, even functions. i will update this readme when this project gets 1 star.
+VERY strictly typed, interpretd lang, similar to python. has a parent-child system, object system, and allows for mods to be made for the engine.
 /n check out the project here https://websim.com/@sarge/squared-2-ide
